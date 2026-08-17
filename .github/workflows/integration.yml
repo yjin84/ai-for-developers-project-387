@@ -1,0 +1,36 @@
+name: integration
+
+on: [push, pull_request]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Integration E2E against real backend
+        # Продакшн-сборка интеграции читает `.env`, которого нет в CI
+        # (gitignored). Адрес бэкенда задаём переменной окружения: Vite
+        # подхватит её на сборке (webServer `npm run build`).
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:4010
+        run: npm run test:e2e:integration

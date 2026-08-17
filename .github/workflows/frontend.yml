@@ -1,0 +1,65 @@
+name: frontend
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Smoke против Prism читает `../typespec/tsp-output/schema/openapi.yaml`,
+      # который не коммитим (gitignored). Генерируем его здесь из TypeSpec.
+      - name: Generate OpenAPI spec from TypeSpec
+        working-directory: typespec
+        run: |
+          npm ci
+          npx tsp compile .
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Контракт меняется → `src/api/schema.d.ts` должен совпадать. Падаем,
+      # если генератор дал отличные от закоммиченных типы.
+      - name: Check schema.d.ts is up to date
+        run: |
+          npm run generate:api
+          git diff --exit-code src/api/schema.d.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (against MSW mock)
+        run: npm run test:e2e
+
+      - name: Smoke tests (against Prism)
+        # Продакшн-сборка smoke читает `.env`, которого нет в CI (gitignored).
+        # Адрес Prism задаём переменной окружения: Vite подхватит её на сборке.
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:4010
+        run: npm run test:e2e:smoke

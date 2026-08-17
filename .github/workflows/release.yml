@@ -1,0 +1,18 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Без input `release-type` action читает `release-please-config.json`
+      # и `.release-please-manifest.json` (manifest-режим): стартовая версия
+      # 0.1.0 из манифеста, `release-type: simple` из конфига.
+      - uses: google-github-actions/release-please-action@v4
