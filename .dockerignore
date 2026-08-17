@@ -1,0 +1,19 @@
+# Dependencies and build artifacts — rebuilt inside the container.
+**/node_modules
+**/dist*
+**/build
+**/.gradle
+
+# Test and coverage output.
+coverage
+test-results
+playwright-report
+
+# Repo metadata and secrets.
+.git
+plan*.md
+.env
+
+# Editor / OS noise.
+.DS_Store
+*.log
