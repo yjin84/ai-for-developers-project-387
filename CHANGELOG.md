@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **backend:** брони теперь только по сетке слотов ([0f06496](https://github.com/yjin84/ai-for-developers-project-387/commit/0f064961b9f1869051808fd73ed13e1f233df4a9))
+* **backend:** замечания учтены, константы добавлены, build зелёный ([4a537fb](https://github.com/yjin84/ai-for-developers-project-387/commit/4a537fb60d03672729f45100096313a5562a4d4b))
+
 ## [0.2.0](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.1.1...v0.2.0) (2026-08-18)
 
 
