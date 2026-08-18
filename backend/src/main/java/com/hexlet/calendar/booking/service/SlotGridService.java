@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class SlotGridService {
 
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final long SECONDS_PER_MINUTE = 60L;
+
     private final SlotProperties slotProperties;
 
     public SlotGridService(SlotProperties slotProperties) {
@@ -42,9 +45,9 @@ public class SlotGridService {
             return false;
         }
 
-        int startMinute = slotProperties.startHour() * 60;
-        int endMinute = slotProperties.endHour() * 60;
-        int minuteOfDay = startZdt.getHour() * 60 + startZdt.getMinute();
+        int startMinute = slotProperties.startHour() * MINUTES_PER_HOUR;
+        int endMinute = slotProperties.endHour() * MINUTES_PER_HOUR;
+        int minuteOfDay = startZdt.getHour() * MINUTES_PER_HOUR + startZdt.getMinute();
         if (minuteOfDay < startMinute || minuteOfDay > endMinute) {
             return false;
         }
@@ -53,7 +56,7 @@ public class SlotGridService {
         }
 
         Instant dayEnd = startDay.atStartOfDay(zone).toInstant()
-                .plusSeconds((endMinute + slotProperties.stepMin()) * 60L);
-        return start.plusSeconds(durationMinutes * 60L).compareTo(dayEnd) <= 0;
+                .plusSeconds((endMinute + slotProperties.stepMin()) * SECONDS_PER_MINUTE);
+        return start.plusSeconds(durationMinutes * SECONDS_PER_MINUTE).compareTo(dayEnd) <= 0;
     }
 }

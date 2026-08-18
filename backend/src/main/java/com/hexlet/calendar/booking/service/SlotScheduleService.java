@@ -18,6 +18,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class SlotScheduleService {
 
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final long SECONDS_PER_MINUTE = 60L;
+
     private final SlotProperties slotProperties;
     private final BookingRepository bookingRepository;
     private final SlotGridService slotGridService;
@@ -61,8 +64,8 @@ public class SlotScheduleService {
         for (int offset = 0; offset <= slotProperties.daysAhead(); offset++) {
             LocalDate date = today.plusDays(offset);
 
-            int startMinute = slotProperties.startHour() * 60;
-            int endMinute = slotProperties.endHour() * 60;
+            int startMinute = slotProperties.startHour() * MINUTES_PER_HOUR;
+            int endMinute = slotProperties.endHour() * MINUTES_PER_HOUR;
             for (int minute = startMinute; minute <= endMinute;
                     minute += slotProperties.stepMin()) {
                 ZonedDateTime startZdt = date.atStartOfDay(zone).plusMinutes(minute);
@@ -79,6 +82,6 @@ public class SlotScheduleService {
     }
 
     private long durationSeconds(EventTypeEntity eventType) {
-        return eventType.getDurationMinutes() * 60L;
+        return eventType.getDurationMinutes() * SECONDS_PER_MINUTE;
     }
 }

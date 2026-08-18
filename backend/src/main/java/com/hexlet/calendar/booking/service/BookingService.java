@@ -19,6 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookingService {
 
+    /** Секунд в минуте — перевод {@code durationMinutes} в {@code Instant}. */
+    private static final long SECONDS_PER_MINUTE = 60L;
+
     private final BookingRepository bookingRepository;
     private final EventTypeRepository eventTypeRepository;
     private final SlotGridService slotGridService;
@@ -47,7 +50,8 @@ public class BookingService {
 
         Instant now = clock.instant();
         Instant start = request.start();
-        if (!slotGridService.isValidStart(start, now, eventType.getDurationMinutes())) {
+        int durationMinutes = eventType.getDurationMinutes();
+        if (!slotGridService.isValidStart(start, now, durationMinutes)) {
             throw new SlotNotAvailableException();
         }
 
@@ -55,7 +59,7 @@ public class BookingService {
                 UUID.randomUUID().toString(),
                 eventType,
                 start,
-                start.plusSeconds(eventType.getDurationMinutes() * 60L),
+                start.plusSeconds(durationMinutes * SECONDS_PER_MINUTE),
                 now);
         try {
             booking = bookingRepository.saveAndFlush(booking);
