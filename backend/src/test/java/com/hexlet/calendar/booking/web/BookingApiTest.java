@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +30,7 @@ class BookingApiTest {
     @DisplayName("POST /bookings — happy path 201 с корректными end/createdAt")
     void createHappyPath() throws Exception {
         createEventType("consultation-30", 30);
-        String start = Instant.now().plus(Duration.ofMinutes(30)).toString();
+        String start = nextGridStart();
 
         mockMvc.perform(post("/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -50,7 +52,7 @@ class BookingApiTest {
     @DisplayName("GET /bookings — бронь в списке со встроенным eventType")
     void listContainsBookingWithEventType() throws Exception {
         createEventType("consultation-30", "Консультация", 30);
-        String start = Instant.now().plus(Duration.ofMinutes(30)).toString();
+        String start = nextGridStart();
         createBooking(start);
 
         mockMvc.perform(get("/bookings"))
@@ -65,7 +67,7 @@ class BookingApiTest {
     @DisplayName("POST /bookings — повторная бронь того же старта → 409 slot_already_booked")
     void duplicateStartConflict() throws Exception {
         createEventType("consultation-30", 30);
-        String start = Instant.now().plus(Duration.ofHours(1)).toString();
+        String start = nextGridStart();
         createBooking(start);
         createEventType("quick-call-15", 15);
 
@@ -100,9 +102,45 @@ class BookingApiTest {
     }
 
     @Test
+    @DisplayName("POST /bookings — старт в прошлом → 400 slot_not_available")
+    void pastStartRejected() throws Exception {
+        createEventType("consultation-30", 30);
+        String past = Instant.now().minus(Duration.ofDays(1)).toString();
+
+        mockMvc.perform(post("/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "eventTypeId": "consultation-30",
+                                  "start": "%s"
+                                }
+                                """.formatted(past)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("slot_not_available"));
+    }
+
+    @Test
+    @DisplayName("POST /bookings — старт вне сетки (не кратен шагу) → 400 slot_not_available")
+    void offGridStartRejected() throws Exception {
+        createEventType("consultation-30", 30);
+        String offGrid = Instant.parse(nextGridStart()).plusSeconds(60).toString();
+
+        mockMvc.perform(post("/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "eventTypeId": "consultation-30",
+                                  "start": "%s"
+                                }
+                                """.formatted(offGrid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("slot_not_available"));
+    }
+
+    @Test
     @DisplayName("POST /bookings — неизвестный тип → 400 slot_not_available")
     void unknownEventType() throws Exception {
-        String start = Instant.now().plus(Duration.ofMinutes(30)).toString();
+        String start = nextGridStart();
 
         mockMvc.perform(post("/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +157,7 @@ class BookingApiTest {
     @Test
     @DisplayName("POST /bookings — невалидный eventTypeId → 400 Error{code:400}")
     void invalidEventTypeId() throws Exception {
-        String start = Instant.now().plus(Duration.ofMinutes(30)).toString();
+        String start = nextGridStart();
 
         mockMvc.perform(post("/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -176,5 +214,15 @@ class BookingApiTest {
                                 }
                                 """.formatted(start)))
                 .andExpect(status().isCreated());
+    }
+
+    /** Следующий рабочий день в 09:00 МСК — гарантированно будущий и в сетке. */
+    private String nextGridStart() {
+        ZoneId zone = ZoneId.of("Europe/Moscow");
+        LocalDate day = Instant.now().atZone(zone).toLocalDate().plusDays(1);
+        while (day.getDayOfWeek().getValue() > 5) {
+            day = day.plusDays(1);
+        }
+        return day.atTime(9, 0).atZone(zone).toInstant().toString();
     }
 }

@@ -20,25 +20,27 @@ public class SlotScheduleService {
 
     private final SlotProperties slotProperties;
     private final BookingRepository bookingRepository;
+    private final SlotGridService slotGridService;
     private final Clock clock;
 
     public SlotScheduleService(SlotProperties slotProperties, BookingRepository bookingRepository,
-            Clock clock) {
+            SlotGridService slotGridService, Clock clock) {
         this.slotProperties = slotProperties;
         this.bookingRepository = bookingRepository;
+        this.slotGridService = slotGridService;
         this.clock = clock;
     }
 
     /**
      * Свободные слоты типа события на окно записи.
      *
-     * Окно — {@code [now, now + daysAhead)} в зоне {@code SLOT_TIMEZONE}. Старты
-     * генерируются для каждого дня окна: только рабочие дни из
-     * {@code SLOT_DAYS_OF_WEEK}, от {@code SLOT_START_HOUR} до
-     * {@code SLOT_END_HOUR} включительно с шагом {@code SLOT_STEP_MIN};
-     * {@code end = start + durationMinutes}. Из списка исключаются прошедшие
-     * старты (start/end ранее {@code now}) и старты, уже занятые
-     * бронированием любого типа.
+     * Окно — {@code [today, today + daysAhead]} в зоне {@code SLOT_TIMEZONE}.
+     * Старты генерируются для каждого дня окна от {@code SLOT_START_HOUR} до
+     * {@code SLOT_END_HOUR} включительно с шагом {@code SLOT_STEP_MIN}, затем
+     * пропускаются через общий валидатор сетки {@link SlotGridService}
+     * (рабочий день, не в прошлом, укладывается в день по длительности);
+     * {@code end = start + durationMinutes}. Из списка исключаются старты, уже
+     * занятые бронированием любого типа.
      */
     public List<AvailableSlot> freeSlotsFor(EventTypeEntity eventType) {
         ZoneId zone = ZoneId.of(slotProperties.timezone());
@@ -58,9 +60,6 @@ public class SlotScheduleService {
         List<AvailableSlot> slots = new ArrayList<>();
         for (int offset = 0; offset <= slotProperties.daysAhead(); offset++) {
             LocalDate date = today.plusDays(offset);
-            if (!isWorkingDay(date)) {
-                continue;
-            }
 
             int startMinute = slotProperties.startHour() * 60;
             int endMinute = slotProperties.endHour() * 60;
@@ -68,19 +67,15 @@ public class SlotScheduleService {
                     minute += slotProperties.stepMin()) {
                 ZonedDateTime startZdt = date.atStartOfDay(zone).plusMinutes(minute);
                 Instant start = startZdt.toInstant();
-                Instant end = start.plusSeconds(durationSeconds(eventType));
-                if (!end.isAfter(now) || bookedStarts.contains(start)) {
+                if (!slotGridService.isValidStart(start, now, durationMinutes)
+                        || bookedStarts.contains(start)) {
                     continue;
                 }
+                Instant end = start.plusSeconds(durationSeconds(eventType));
                 slots.add(new AvailableSlot(start, end));
             }
         }
         return slots;
-    }
-
-    private boolean isWorkingDay(LocalDate date) {
-        int dayValue = date.getDayOfWeek().getValue();
-        return slotProperties.daysOfWeek().contains(dayValue);
     }
 
     private long durationSeconds(EventTypeEntity eventType) {

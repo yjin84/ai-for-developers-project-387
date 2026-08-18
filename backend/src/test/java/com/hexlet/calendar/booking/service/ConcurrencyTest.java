@@ -8,8 +8,9 @@ import com.hexlet.calendar.booking.repository.BookingRepository;
 import com.hexlet.calendar.booking.repository.EventTypeRepository;
 import com.hexlet.calendar.booking.web.BookingCreateRequest;
 import com.hexlet.calendar.booking.web.BookingResponse;
-import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -53,8 +54,8 @@ class ConcurrencyTest {
     void concurrentBookingSameStart() throws Exception {
         // H2 TIMESTAMP не хранит доли секунды: берём старт кратным часу, чтобы
         // значение при записи и выборке findAllByStart совпали один-в-один.
-        Instant start = Instant.now().plus(Duration.ofHours(1))
-                .truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        // Следующий рабочий день в 09:00 МСК — всегда в сетке слотов.
+        Instant start = nextGridStart();
         BookingCreateRequest request = new BookingCreateRequest("consultation-30", start);
 
         List<Callable<Object>> tasks = IntStream.range(0, THREADS)
@@ -98,6 +99,16 @@ class ConcurrencyTest {
         long conflicts = results.stream().filter("conflict"::equals).count();
         assertThat(created).isEqualTo(1);
         assertThat(conflicts).isEqualTo(THREADS - 1);
+    }
+
+    /** Следующий рабочий день в 09:00 МСК — всегда в сетке и кратен часу. */
+    private Instant nextGridStart() {
+        ZoneId zone = ZoneId.of("Europe/Moscow");
+        LocalDate day = Instant.now().atZone(zone).toLocalDate().plusDays(1);
+        while (day.getDayOfWeek().getValue() > 5) {
+            day = day.plusDays(1);
+        }
+        return day.atTime(9, 0).atZone(zone).toInstant();
     }
 
     private List<Object> runConcurrently(List<Callable<Object>> tasks) throws Exception {

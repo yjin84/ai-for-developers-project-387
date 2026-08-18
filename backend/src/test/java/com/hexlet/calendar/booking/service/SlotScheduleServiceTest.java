@@ -39,7 +39,7 @@ class SlotScheduleServiceTest {
         when(bookingRepository.findByStartBetween(Mockito.any(), Mockito.any()))
                 .thenReturn(Collections.emptyList());
         service = new SlotScheduleService(SlotProperties.defaults(), bookingRepository,
-                Clock.fixed(NOW, MOSCOW));
+                new SlotGridService(SlotProperties.defaults()), Clock.fixed(NOW, MOSCOW));
     }
 
     @Test
