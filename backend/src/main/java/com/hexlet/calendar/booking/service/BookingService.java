@@ -1,6 +1,5 @@
 package com.hexlet.calendar.booking.service;
 
-import com.hexlet.calendar.booking.config.SlotProperties;
 import com.hexlet.calendar.booking.model.BookingEntity;
 import com.hexlet.calendar.booking.model.EventTypeEntity;
 import com.hexlet.calendar.booking.repository.BookingRepository;
@@ -10,7 +9,6 @@ import com.hexlet.calendar.booking.web.BookingResponse;
 import com.hexlet.calendar.booking.web.BookingWithEventTypeResponse;
 import com.hexlet.calendar.booking.web.EventTypeResponse;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -21,33 +19,39 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BookingService {
 
+    /** Секунд в минуте — перевод {@code durationMinutes} в {@code Instant}. */
+    private static final long SECONDS_PER_MINUTE = 60L;
+
     private final BookingRepository bookingRepository;
     private final EventTypeRepository eventTypeRepository;
-    private final SlotProperties slotProperties;
+    private final SlotGridService slotGridService;
     private final Clock clock;
 
     public BookingService(BookingRepository bookingRepository,
-            EventTypeRepository eventTypeRepository, SlotProperties slotProperties, Clock clock) {
+            EventTypeRepository eventTypeRepository, SlotGridService slotGridService, Clock clock) {
         this.bookingRepository = bookingRepository;
         this.eventTypeRepository = eventTypeRepository;
-        this.slotProperties = slotProperties;
+        this.slotGridService = slotGridService;
         this.clock = clock;
     }
 
     /**
-     * Создать бронь по правилам §7. Конфликт уникального {@code start} ловится
-     * локально (unique-индекс) и превращается в 409, минуя глобальный перехват
-     * {@link DataIntegrityViolationException} этапа 3.
+     * Создать бронь по правилам §7. Старт сверяется с общим валидатором сетки
+     * {@link SlotGridService} (рабочий день, часы, шаг, окно дней) — бронь
+     * возможна только на слот, который покажет {@code GET /slots}. Конфликт
+     * уникального {@code start} ловится локально (unique-индекс) и превращается
+     * в 409, минуя глобальный перехват {@link DataIntegrityViolationException}
+     * этапа 3.
      */
     @Transactional
     public BookingResponse create(BookingCreateRequest request) {
         EventTypeEntity eventType = eventTypeRepository.findById(request.eventTypeId())
                 .orElseThrow(SlotNotAvailableException::new);
 
-Instant now = clock.instant();
+        Instant now = clock.instant();
         Instant start = request.start();
-        Instant windowEnd = now.plus(Duration.ofDays(slotProperties.daysAhead()));
-        if (start.isBefore(now) || start.isAfter(windowEnd)) {
+        int durationMinutes = eventType.getDurationMinutes();
+        if (!slotGridService.isValidStart(start, now, durationMinutes)) {
             throw new SlotNotAvailableException();
         }
 
@@ -55,7 +59,7 @@ Instant now = clock.instant();
                 UUID.randomUUID().toString(),
                 eventType,
                 start,
-                start.plusSeconds(eventType.getDurationMinutes() * 60L),
+                start.plusSeconds(durationMinutes * SECONDS_PER_MINUTE),
                 now);
         try {
             booking = bookingRepository.saveAndFlush(booking);
