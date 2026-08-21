@@ -66,7 +66,9 @@ jobs:
             for f in lighthouse-reports/*.report.json; do
               node -e '
                 const [, file, label] = process.argv;
-                const { categories } = require(file);
+                // Читаем через fs: require() без префикса ./ ищет пакет в node_modules,
+                // а не относительный путь (причина падения прогона 32510791880).
+                const { categories } = JSON.parse(require("fs").readFileSync(file, "utf8"));
                 const pct = (k) => Math.round((categories[k].score ?? 0) * 100);
                 console.log(`| ${label} | ${pct("performance")} | ${pct("accessibility")} | ${pct("best-practices")} | ${pct("seo")} |`);
               ' "$f" "$(basename "$f" .report.json)"
