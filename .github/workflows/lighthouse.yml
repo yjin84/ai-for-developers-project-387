@@ -1,0 +1,81 @@
+name: lighthouse
+
+on:
+  schedule:
+    # 02:00 по Москве (UTC+3) = 23:00 UTC предыдущего дня.
+    # Ночной прогон, утром команда смотрит отчёт в артефактах и Step Summary.
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # Аудитируем e2e-сборку (mode test): MSW-воркер отдаёт детерминированные
+      # мок-данные, поэтому отчёт стабилен и не зависит от живого бэкенда.
+      - name: Build frontend (test mode with MSW)
+        run: npm run build:e2e
+
+      - name: Serve production build
+        run: |
+          nohup npm run preview:e2e > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -f http://127.0.0.1:4173/ > /dev/null
+
+      # Lighthouse CLI: HTML-отчёт для просмотра утром + JSON для сводки.
+      # Chrome предустановлен на ubuntu-latest раннерах.
+      - name: Run Lighthouse
+        run: |
+          mkdir -p lighthouse-reports
+          for page in "/:index" "/book:book" "/admin:admin"; do
+            url="${page%%:*}"
+            name="${page##*:}"
+            npx --yes lighthouse@latest "http://127.0.0.1:4173${url}" \
+              --output=json --output=html \
+              --output-path="lighthouse-reports/${name}" \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --chrome-flags="--headless=new --no-sandbox" \
+              --quiet
+          done
+
+      # Краткая сводка с оценками — видна прямо в Run Summary без скачивания.
+      - name: Write scores summary
+        run: |
+          {
+            echo "## Lighthouse — $(date -u +%Y-%m-%d)"
+            echo ""
+            echo "| Страница | Performance | Accessibility | Best Practices | SEO |"
+            echo "|---|---|---|---|---|"
+            for f in lighthouse-reports/*.report.json; do
+              node -e '
+                const [, file, label] = process.argv;
+                const { categories } = require(file);
+                const pct = (k) => Math.round((categories[k].score ?? 0) * 100);
+                console.log(`| ${label} | ${pct("performance")} | ${pct("accessibility")} | ${pct("best-practices")} | ${pct("seo")} |`);
+              ' "$f" "$(basename "$f" .report.json)"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report-${{ github.run_id }}
+          path: frontend/lighthouse-reports/
+          retention-days: 90
