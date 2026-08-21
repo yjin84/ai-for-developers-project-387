@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.1...v0.2.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **ci:** read lighthouse reports via fs instead of bare require ([5bf9300](https://github.com/yjin84/ai-for-developers-project-387/commit/5bf930096c1035c25147e31b16563aa8967dacf8))
+
 ## [0.2.1](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.0...v0.2.1) (2026-08-18)
 
 
