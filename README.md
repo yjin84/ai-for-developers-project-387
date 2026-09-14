@@ -21,7 +21,7 @@
 ## Автоматизация на основе OpenCode
 
 Репозиторий использует GitHub-агент OpenCode (`anomalyco/opencode/github@latest`,
-модель `opencode/deepseek-v4-flash`). Все сценарии описаны в `.github/workflows/`:
+модель `opencode/big-pickle`). Все сценарии описаны в `.github/workflows/`:
 
 | Сценарий | Workflow | Команда / триггер | Что делает агент | Где результат |
 |---|---|---|---|---|

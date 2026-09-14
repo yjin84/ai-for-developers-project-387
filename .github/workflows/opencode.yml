@@ -49,7 +49,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           use_github_token: true
-          model: opencode/deepseek-v4-flash
+          model: opencode/big-pickle
           # Сессии не публикуем на opencode.ai (репозиторий публичный) — явное решение.
           share: false
           # Явно закрепляем команды вызова (по умолчанию они и так /oc,/opencode).
