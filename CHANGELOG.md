@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.2...v0.3.0) (2026-09-14)
+
+
+### Features
+
+* add opencode automation scenarios and harden agent workflows ([81624c7](https://github.com/yjin84/ai-for-developers-project-387/commit/81624c79ddd6c05e1ddc13c677baaafedcb8a312))
+
+
+### Bug Fixes
+
+* apply opencode auto-review findings ([9680e82](https://github.com/yjin84/ai-for-developers-project-387/commit/9680e82bef19159a9846b0a6e03ff0be30a51e82))
+* grant workflows write permission to interactive agent ([ffe26f9](https://github.com/yjin84/ai-for-developers-project-387/commit/ffe26f993bffb26bfe62890c0a584b29cb1e414e))
+* revert invalid workflows scope; document GITHUB_TOKEN constraint ([d10628f](https://github.com/yjin84/ai-for-developers-project-387/commit/d10628fb66b545b3568c59c5205e4c4e9d34ce1f))
+* use current opencode model name (deepseek-v4-flash-free -&gt; deepseek-v4-flash) ([758923b](https://github.com/yjin84/ai-for-developers-project-387/commit/758923b002eba16baa0984a1ebf372d10d8e14ec))
+
 ## [0.2.2](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.1...v0.2.2) (2026-08-21)
 
 
