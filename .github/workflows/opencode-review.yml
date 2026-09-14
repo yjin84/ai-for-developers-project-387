@@ -40,7 +40,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           use_github_token: true
-          model: opencode/deepseek-v4-flash-free
+          model: opencode/deepseek-v4-flash
           share: false
           mentions: /oc,/opencode
           prompt: |

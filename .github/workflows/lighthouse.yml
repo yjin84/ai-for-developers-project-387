@@ -104,7 +104,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           use_github_token: true
-          model: opencode/deepseek-v4-flash-free
+          model: opencode/deepseek-v4-flash
           share: false
           mentions: /oc,/opencode
           prompt: |
