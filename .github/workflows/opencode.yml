@@ -24,9 +24,12 @@ jobs:
        startsWith(github.event.comment.body, '/opencode'))
     runs-on: ubuntu-latest
     permissions:
+      # workflows нужен, чтобы коммитить изменения самих workflow-файлов
+      # (иное GitHub блокирует push: "refusing to allow a GitHub App ... without workflows permission").
       contents: write
       pull-requests: write
       issues: write
+      workflows: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
