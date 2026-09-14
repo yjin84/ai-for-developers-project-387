@@ -10,12 +10,28 @@ on:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     defaults:
       run:
         working-directory: frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Не оставляем учётные данные в .git/config (см. opencode.yml).
+          # Отчёты генерируются в этой же job-е, агент OpenCode их читает локально.
+          persist-credentials: false
+
+      - name: Configure git auth and identity
+        run: |
+          git config --local user.name "opencode[bot]"
+          git config --local user.email "opencode[bot]@users.noreply.github.com"
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -74,6 +90,36 @@ jobs:
               ' "$f" "$(basename "$f" .report.json)"
             done
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Регулярный сценарий OpenCode: агент анализирует готовые отчёты Lighthouse
+      # (они созданы в шагах выше) и решает, создавать ли issue по регрессии.
+      # Для schedule/workflow_dispatch PROMPT обязателен; way=repo, поэтому итог
+      # виден в логах прогона, а issue создаётся агентом через gh (если нужно).
+      - name: Analyze Lighthouse report with OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          USE_GITHUB_TOKEN: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          use_github_token: true
+          model: opencode/deepseek-v4-flash-free
+          share: false
+          mentions: /oc,/opencode
+          prompt: |
+            Ночной прогон Lighthouse завершён. Проанализируй JSON-отчёты в
+            frontend/lighthouse-reports/*.report.json (страницы index, book, admin;
+            категории performance, accessibility, best-practices, seo).
+
+            Действия:
+            1. Выпиши оценки по каждой странице и категории.
+            2. Если какая-то оценка упала ниже 0.9 или есть явная регрессия против
+               типичного уровня: создай issue через `gh issue create` с заголовком
+               "Lighthouse: регрессия" и списком проблем (страница, категория, оценка).
+               Иначе ничего не создавай.
+            3. Не изменяй код и не коммить ничего — отчёт уже сохранён в артефактах.
+            Ответ — краткое резюме по пунктам.
 
       - name: Upload Lighthouse report
         uses: actions/upload-artifact@v4

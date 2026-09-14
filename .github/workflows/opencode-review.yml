@@ -1,0 +1,54 @@
+name: opencode-review
+
+on:
+  pull_request:
+    # Сознательно без synchronize: коммит ревьюера (или правки по замечаниям)
+    # повторно триггерил бы сценарий — цикл. Ревьюим на открытии и возобновлении.
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  review:
+    # Авто-ревью PR: только человек с правами на запись (иначе assertPermissions падает).
+    # PR от ботов и самого агента не ревьюим.
+    if: |
+      github.event.pull_request.user.type == 'User' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Configure git auth and identity
+        run: |
+          git config --local user.name "opencode[bot]"
+          git config --local user.email "opencode[bot]@users.noreply.github.com"
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Review pull request with opencode
+        uses: anomalyco/opencode/github@latest
+        env:
+          USE_GITHUB_TOKEN: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          use_github_token: true
+          model: opencode/deepseek-v4-flash-free
+          share: false
+          mentions: /oc,/opencode
+          prompt: |
+            Тебе открыли новый pull request (данные PR приходят в контексте). Выполни code review:
+
+            1. Изучи диф, типы из typespec/ и соответствующие файлы целиком (не только диф).
+            2. Отметь реальные баги, ошибки по контракту и проблемы со стилем.
+            3. Не придирайся к мелочам — только существенное.
+            4. Если проблемы есть — опиши их; если всё хорошо — коротко подтверди.
+
+            Не изменяй код и не коммить ничего. Твой ответ станет комментарием в PR.

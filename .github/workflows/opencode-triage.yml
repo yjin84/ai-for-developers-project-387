@@ -1,0 +1,55 @@
+name: opencode-triage
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    # Авто-триаж новой issue: только человек с правами на запись (у актора
+    # без write-run агент упадёт на assertPermissions). Боты и сам агент не запускают сценарий.
+    if: |
+      github.event.issue.user.type == 'User' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Configure git auth and identity
+        run: |
+          git config --local user.name "opencode[bot]"
+          git config --local user.email "opencode[bot]@users.noreply.github.com"
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Triage issue with opencode
+        uses: anomalyco/opencode/github@latest
+        env:
+          USE_GITHUB_TOKEN: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        with:
+          use_github_token: true
+          model: opencode/deepseek-v4-flash-free
+          share: false
+          mentions: /oc,/opencode
+          # У событий issues нет комментария-триггера, поэтому PROMPT обязателен.
+          # Агент отвечает в issue, изменения кода не вносит — инфраструктура сама
+          # оставит комментарий с ответом (ветку/PR не создаёт, т.к. дерево чистое).
+          prompt: |
+            Тебе открыли новую issue этого репозитория (текст ниже). Выполни триаж:
+
+            1. Прочитай issue и отнеси её к категории: баг / фича / вопрос.
+            2. Загляни в код и typespec/, если это баг — оцени причину, укажи файл/строку.
+            3. Предложи план действий и, если нужно, приоритет.
+
+            Не изменяй код и не коммить ничего. Ответом будет текст твоего анализа,
+            который станет комментарием в issue.
