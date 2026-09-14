@@ -21,17 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Не оставляем учётные данные в .git/config (см. opencode.yml).
-          # Отчёты генерируются в этой же job-е, агент OpenCode их читает локально.
+          # Агент OpenCode здесь ничего не пушит (промпт запрещает коммиты и ветку
+          # не меняет), поэтому write-доступа не даём вообще — даже на время прогона.
           persist-credentials: false
-
-      - name: Configure git auth and identity
-        run: |
-          git config --local user.name "opencode[bot]"
-          git config --local user.email "opencode[bot]@users.noreply.github.com"
-          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -115,9 +107,11 @@ jobs:
             Действия:
             1. Выпиши оценки по каждой странице и категории.
             2. Если какая-то оценка упала ниже 0.9 или есть явная регрессия против
-               типичного уровня: создай issue через `gh issue create` с заголовком
-               "Lighthouse: регрессия" и списком проблем (страница, категория, оценка).
-               Иначе ничего не создавай.
+               типичного уровня: сначала проверь через `gh issue list --search "Lighthouse: регрессия"`,
+               есть ли уже открытая issue по регрессии. Если есть — не создавай новую
+               (добавь комментарий в существующую). Если нет — создай через
+               `gh issue create` с заголовком "Lighthouse: регрессия" и списком проблем
+               (страница, категория, оценка).
             3. Не изменяй код и не коммить ничего — отчёт уже сохранён в артефактах.
             Ответ — краткое резюме по пунктам.
 

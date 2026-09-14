@@ -17,8 +17,10 @@ jobs:
       github.event.comment.user.type == 'User' &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
       (contains(github.event.comment.body, ' /oc') ||
+       contains(github.event.comment.body, '\n/oc') ||
        startsWith(github.event.comment.body, '/oc') ||
        contains(github.event.comment.body, ' /opencode') ||
+       contains(github.event.comment.body, '\n/opencode') ||
        startsWith(github.event.comment.body, '/opencode'))
     runs-on: ubuntu-latest
     permissions:
@@ -35,7 +37,9 @@ jobs:
 
       - name: Configure git auth and identity
         # Авторизация аналогична той, что actions/checkout писал раньше в .git/config:
-        # basic x-access-token:<GITHUB_TOKEN>. Нужна, чтобы агент мог коммитить и пушить.
+        # basic x-access-token:<GITHUB_TOKEN>. Делаем explicit, чтобы агент мог коммитить
+        # и пушить, не полагаясь на неявные учётные данные с раннера. Runner эфемерный —
+        # в .git/config креды живут только до конца прогона.
         run: |
           git config --local user.name "opencode[bot]"
           git config --local user.email "opencode[bot]@users.noreply.github.com"
