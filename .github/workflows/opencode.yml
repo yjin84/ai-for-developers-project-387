@@ -24,12 +24,13 @@ jobs:
        startsWith(github.event.comment.body, '/opencode'))
     runs-on: ubuntu-latest
     permissions:
-      # workflows нужен, чтобы коммитить изменения самих workflow-файлов
-      # (иное GitHub блокирует push: "refusing to allow a GitHub App ... without workflows permission").
+      # GITHUB_TOKEN НЕ имеет скоупа `workflows` (это не валидный scope — см. документацию
+      # по GITHUB_TOKEN), поэтому агент физически не может коммитить изменения в
+      # .github/workflows/*. Интерактивный агент работает с кодом/документацией PR,
+      # а workflow-файлы правит человек обычным коммитом.
       contents: write
       pull-requests: write
       issues: write
-      workflows: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
