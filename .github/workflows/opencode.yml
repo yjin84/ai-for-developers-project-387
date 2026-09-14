@@ -8,14 +8,26 @@ on:
 
 jobs:
   opencode:
+    # Интерактивный вызов: только человек с правами на запись, только с явной командой /oc|/opencode.
+    # Проверка user.type == 'User' исключает ботов и сам агент (opencode-agent[bot]),
+    # тем самым разрывается петля «комментарий агента → новый прогон».
+    # author_association — чтобы не тратить прогон на пользователей без write-permissions
+    # (handler упадёт на assertPermissions).
     if: |
-      contains(github.event.comment.body, ' /oc') ||
-      startsWith(github.event.comment.body, '/oc') ||
-      contains(github.event.comment.body, ' /opencode') ||
-      startsWith(github.event.comment.body, '/opencode')
+      github.event.comment.user.type == 'User' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (contains(github.event.comment.body, ' /oc') ||
+       contains(github.event.comment.body, '\n/oc') ||
+       startsWith(github.event.comment.body, '/oc') ||
+       contains(github.event.comment.body, ' /opencode') ||
+       contains(github.event.comment.body, '\n/opencode') ||
+       startsWith(github.event.comment.body, '/opencode'))
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      # GITHUB_TOKEN НЕ имеет скоупа `workflows` (это не валидный scope — см. документацию
+      # по GITHUB_TOKEN), поэтому агент физически не может коммитить изменения в
+      # .github/workflows/*. Интерактивный агент работает с кодом/документацией PR,
+      # а workflow-файлы правит человек обычным коммитом.
       contents: write
       pull-requests: write
       issues: write
@@ -23,12 +35,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          persist-credentials: true
+          # Не оставляем учётные данные в .git/config — авторизация git настраивается
+          # явно ниже, только на время прогона.
+          persist-credentials: false
 
-      - name: Set git identity
+      - name: Configure git auth and identity
+        # Авторизация аналогична той, что actions/checkout писал раньше в .git/config:
+        # basic x-access-token:<GITHUB_TOKEN>. Делаем explicit, чтобы агент мог коммитить
+        # и пушить, не полагаясь на неявные учётные данные с раннера. Runner эфемерный —
+        # в .git/config креды живут только до конца прогона.
         run: |
-          git config user.name "opencode[bot]"
-          git config user.email "opencode[bot]@users.noreply.github.com"
+          git config --local user.name "opencode[bot]"
+          git config --local user.email "opencode[bot]@users.noreply.github.com"
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${{ secrets.GITHUB_TOKEN }}" | base64 | tr -d '\n')"
 
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
@@ -38,4 +57,8 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         with:
           use_github_token: true
-          model: opencode/deepseek-v4-flash-free
+          model: opencode/big-pickle
+          # Сессии не публикуем на opencode.ai (репозиторий публичный) — явное решение.
+          share: false
+          # Явно закрепляем команды вызова (по умолчанию они и так /oc,/opencode).
+          mentions: /oc,/opencode
