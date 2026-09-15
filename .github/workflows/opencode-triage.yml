@@ -13,8 +13,7 @@ jobs:
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       issues: write
     steps:
       - name: Checkout repository
@@ -43,7 +42,8 @@ jobs:
           mentions: /oc,/opencode
           # У событий issues нет комментария-триггера, поэтому PROMPT обязателен.
           # Агент отвечает в issue, изменения кода не вносит — инфраструктура сама
-          # оставит комментарий с ответом (ветку/PR не создаёт, т.к. дерево чистое).
+          # оставит комментарий с ответом (ветку/PR не создаёт: у джобы только
+          # contents: read + issues: write).
           prompt: |
             Тебе открыли новую issue этого репозитория (текст ниже). Выполни триаж:
 
