@@ -21,8 +21,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Агент OpenCode здесь ничего не пушит (промпт запрещает коммиты и ветку
-          # не меняет), поэтому write-доступа не даём вообще — даже на время прогона.
+          # Агент OpenCode ничего не пушит (промпт запрещает коммиты; отчёты
+          # lighthouse-reports/ в .gitignore, поэтому дерево остаётся чистым и
+          # хендлер не идёт в ветку/PR). Креды в .git/config не кладём.
           persist-credentials: false
 
       - name: Setup Node.js
