@@ -11,8 +11,7 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       issues: write
     defaults:
       run:
@@ -21,8 +20,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Агент OpenCode здесь ничего не пушит (промпт запрещает коммиты и ветку
-          # не меняет), поэтому write-доступа не даём вообще — даже на время прогона.
+          # У джобы только contents: read + issues: write — агент не может
+          # пушить ветку/PR. Креды в .git/config не кладём.
           persist-credentials: false
 
       - name: Setup Node.js
