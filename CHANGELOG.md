@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.3.0...v0.3.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **ci:** ignore lighthouse-reports to fix nightly lighthouse run ([b7613cb](https://github.com/yjin84/ai-for-developers-project-387/commit/b7613cb08614374b2fb8ab572ad4c8f34592420f))
+* **ci:** restrict agent workflow permissions to least privilege ([4db89ac](https://github.com/yjin84/ai-for-developers-project-387/commit/4db89ac00fe8a76a40c28f520b6effa81edf3b7b))
+
 ## [0.3.0](https://github.com/yjin84/ai-for-developers-project-387/compare/v0.2.2...v0.3.0) (2026-09-14)
 
 
